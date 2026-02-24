@@ -18,7 +18,9 @@
     "nodemailer": "^7.0.12",
     "openai": "^4.0.0",
     "razorpay": "^2.9.6"
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
-"@supabase/supabase-js": "^2.39.0"
+
+
 
