@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import bodyParser from "body-parser";
 import cors from "cors";
+import { createClient } from "@supabase/supabase-js";   // ✅ THIS LINE IS REQUIRED
 
 dotenv.config();
 
@@ -254,6 +255,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
