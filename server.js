@@ -91,39 +91,11 @@ app.post("/finalize", async (req, res) => {
           product,
           amount: Number(amount || 0),
           payment_id,
+          status: "paid",
           claimed: false
         }
-      ]);
-
-    if (error) {
-      console.log("Supabase Insert Error:", error.message);
-      return res.status(500).json({ error: "database_error" });
-    }
-
-    console.log("✅ Payment saved to Supabase");
-
-// 🔥 SAVE TO SUPABASE (REAL DATABASE)
-try {
-  await supabase
-    .from("payments")
-    .insert([
-      {
-        name,
-        email,
-        discord_name,
-        discord_id: String(discord_id),
-        product,
-        amount,
-        payment_id,
-        status: "paid",
-        claimed: false
-      }
     ]);
 
-  console.log("✅ Payment saved to Supabase");
-} catch (err) {
-  console.error("❌ Supabase insert failed:", err);
-}
     
     // --------------------------
     // DISCORD WEBHOOK (UNCHANGED)
@@ -278,6 +250,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
