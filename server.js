@@ -1,3 +1,10 @@
+const { createClient } = require("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -61,7 +68,7 @@ const mailer = nodemailer.createTransport({
 });
 
 // --------------------------------------------
-//  FINALIZE PAYMENT (MANUAL / QR / UPI)
+//  FINALIZE PAYMENT (SUPABASE PERMANENT)
 // --------------------------------------------
 app.post("/finalize", async (req, res) => {
   try {
@@ -79,24 +86,32 @@ app.post("/finalize", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ⭐ STORE FOR BOT ACCESS
-    paidUsers[discord_id] = {
-      name,
-      email,
-      discord_name,
-      discord_id,
-      product,
-      amount,
-      payment_id,
-      status: "PAID",
-      createdAt: Date.now()
-    };
+    // 🔥 INSERT INTO SUPABASE (PERMANENT STORAGE)
+    const { error } = await supabase
+      .from("payments")
+      .insert([
+        {
+          name,
+          email,
+          discord_name,
+          discord_id: String(discord_id),
+          product,
+          amount: Number(amount || 0),
+          payment_id,
+          claimed: false
+        }
+      ]);
 
-    setTimeout(() => {
-      delete paidUsers[discord_id];
-    }, 1000 * 60 * 60); // auto delete after 1 hour
-    
-    // DISCORD WEBHOOK
+    if (error) {
+      console.log("Supabase Insert Error:", error.message);
+      return res.status(500).json({ error: "database_error" });
+    }
+
+    console.log("✅ Payment saved to Supabase");
+
+    // --------------------------
+    // DISCORD WEBHOOK (UNCHANGED)
+    // --------------------------
     await sendWebhook(process.env.WEBHOOK_PAID, {
       embeds: [{
         title: "🧾 New Manual Payment Submitted",
@@ -114,30 +129,6 @@ app.post("/finalize", async (req, res) => {
       }]
     });
 
-    // EMAIL CONFIRMATION
-    try {
-      await mailer.sendMail({
-        to: email,
-        subject: `Payment Submitted | ${product}`,
-        html: `
-          <div style="font-family: Arial; padding:20px;">
-            <h2>🧾 Payment Received</h2>
-            <p>Hi <b>${name}</b>,</p>
-            <p>Your payment details have been submitted successfully.</p>
-            <ul>
-              <li>Product: <b>${product}</b></li>
-              <li>Transaction ID: <b>${payment_id}</b></li>
-              <li>Status: <b>Under Verification</b></li>
-            </ul>
-            <p>Our team will contact you on Discord shortly.</p>
-            <p>— Finest Store</p>
-          </div>
-        `
-      });
-    } catch (err) {
-      console.log("Email error (ignored):", err.message);
-    }
-
     return res.json({ success: true });
 
   } catch (err) {
@@ -147,15 +138,31 @@ app.post("/finalize", async (req, res) => {
 });
 
 // --------------------------------------------
-//  BOT PAYMENT CHECK (READ-ONLY)
+//  BOT PAYMENT CHECK (SUPABASE VERSION)
 // --------------------------------------------
+app.get("/check-payment/:discordId", async (req, res) => {
+  try {
+    const id = req.params.discordId;
 
-app.get("/check-payment/:discordId", (req, res) => {
-  const id = req.params.discordId;
+    // 🔍 Query Supabase
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("discord_id", id)
+      .eq("claimed", false)
+      .limit(1);
 
-  // ✅ PAID USER
-  if (paidUsers[id]) {
-    const record = paidUsers[id];
+    if (error) {
+      console.log("Supabase Fetch Error:", error.message);
+      return res.json({ paid: false });
+    }
+
+    if (!data || data.length === 0) {
+      return res.json({ paid: false });
+    }
+
+    const record = data[0];
+
     return res.json({
       paid: true,
       type: "PAID",
@@ -163,10 +170,15 @@ app.get("/check-payment/:discordId", (req, res) => {
         product: record.product,
         amount: record.amount,
         payment_id: record.payment_id,
-        status: record.status
+        status: "paid"
       }
     });
+
+  } catch (err) {
+    console.log("Check Payment Error:", err);
+    return res.json({ paid: false });
   }
+});
 
   // ✅ FREE USER
   if (freeUsers[id]) {
@@ -254,6 +266,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
