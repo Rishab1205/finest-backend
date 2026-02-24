@@ -20,4 +20,5 @@
     "razorpay": "^2.9.6"
   }
 }
+"@supabase/supabase-js": "^2.39.0"
 
