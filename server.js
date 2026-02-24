@@ -136,7 +136,7 @@ app.get("/check-payment/:discordId", async (req, res) => {
   try {
     const id = req.params.discordId;
 
-    // 🔍 Query Supabase
+    // 🔍 Check Supabase first (PAID)
     const { data, error } = await supabase
       .from("payments")
       .select("*")
@@ -149,43 +149,39 @@ app.get("/check-payment/:discordId", async (req, res) => {
       return res.json({ paid: false });
     }
 
-    if (!data || data.length === 0) {
-      return res.json({ paid: false });
+    if (data && data.length > 0) {
+      const record = data[0];
+
+      return res.json({
+        paid: true,
+        type: "PAID",
+        data: {
+          product: record.product,
+          amount: record.amount,
+          payment_id: record.payment_id,
+          status: "paid"
+        }
+      });
     }
 
-    const record = data[0];
+    // 🔍 Check FREE cache
+    if (freeUsers[id]) {
+      return res.json({
+        paid: true,
+        type: "FREE",
+        data: {
+          product: "FREE PACK",
+          status: "FREE"
+        }
+      });
+    }
 
-    return res.json({
-      paid: true,
-      type: "PAID",
-      data: {
-        product: record.product,
-        amount: record.amount,
-        payment_id: record.payment_id,
-        status: "paid"
-      }
-    });
+    return res.json({ paid: false });
 
   } catch (err) {
     console.log("Check Payment Error:", err);
     return res.json({ paid: false });
   }
-});
-
-  // ✅ FREE USER
-  if (freeUsers[id]) {
-    return res.json({
-      paid: true,
-      type: "FREE",
-      data: {
-        product: "FREE PACK",
-        status: "FREE"
-      }
-    });
-  }
-
-  // ❌ NOT FOUND
-  return res.json({ paid: false });
 });
 
 // --------------------------------------------
@@ -258,6 +254,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
