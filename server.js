@@ -218,6 +218,62 @@ app.post("/finalize", async (req, res) => {
     return res.status(500).json({ error: "finalize_failed" });
   }
 });
+
+const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;
+const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER_SERVICES;
+
+// helper: safe mention
+function staffPing() {
+  if (!STAFF_ROLE_ID) return null;
+  return `<@&${STAFF_ROLE_ID}>`;
+}
+
+app.post("/service-request", async (req, res) => {
+  try {
+    const { username, service_type, plan, requirements } = req.body;
+
+    if (!username || !service_type || !plan || !requirements) {
+      return res.status(400).json({ success: false, error: "missing_fields" });
+    }
+
+    // simple order id
+    const orderId = `FS-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`;
+
+    const content = staffPing() ? `${staffPing()}  🛠️ New request received` : "🛠️ New request received";
+
+    await sendWebhook(OTHER_SERVICES_WEBHOOK, {
+      content,
+      embeds: [
+        {
+          author: {
+            name: "Finest Store • Service Desk",
+            icon_url: "https://i.imgur.com/0rGQq8C.png" // optional, you can change
+          },
+          title: "📩 New Service Request",
+          description:
+            "A new **Other Services** request has been submitted.\n\n" +
+            `**Order ID:** \`${orderId}\``,
+          color: 0x5865F2,
+          fields: [
+            { name: "User", value: `\`${username}\``, inline: true },
+            { name: "Service", value: `\`${service_type}\``, inline: true },
+            { name: "Package / Price", value: `\`${plan}\``, inline: false },
+            { name: "Requirements", value: requirements.slice(0, 1000), inline: false }
+          ],
+          footer: { text: "Finest Store • Staff will contact on Discord" },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+
+    return res.json({ success: true, order_id: orderId });
+
+  } catch (err) {
+    console.error("service-request error:", err);
+    return res.status(500).json({ success: false, error: "service_request_failed" });
+  }
+});
+
 // --------------------------------------------
 //  BOT PAYMENT CHECK (SUPABASE VERSION)
 // --------------------------------------------
@@ -343,6 +399,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
