@@ -26,8 +26,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const PACK_SERVICES_WEBHOOK = process.env.WEBHOOK_PACK;
-const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER;
+const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;  // ✅ only once (recommended)
+const PACK_SERVICES_WEBHOOK = process.env.WEBHOOK_PACK; // ✅ only once
+const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER; // ✅ only once
 
 const app = express();
 app.use(cors());
@@ -232,8 +233,6 @@ app.post("/finalize", async (req, res) => {
       }]
     });
 
-const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;
-
 // helper: safe mention
 function staffPing() {
   if (!STAFF_ROLE_ID) return null;
@@ -392,7 +391,6 @@ app.post("/freepack", async (req, res) => {
           }
         ]
       });
-    }
 
     return res.json({ success: true });
 
@@ -411,6 +409,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
