@@ -73,6 +73,23 @@ async function sendWebhook(url, payload) {
 }
 
 // --------------------------------------------
+//  FILE WEBHOOK SENDER (FOR SCREENSHOTS ONLY)
+// --------------------------------------------
+async function sendWebhookWithFile(url, embedPayload, fileBuffer, fileName) {
+  const form = new FormData();
+
+  form.append("payload_json", JSON.stringify(embedPayload));
+  form.append("file", fileBuffer, fileName);
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: form
+  });
+
+  console.log("SCREENSHOT WEBHOOK STATUS:", res.status);
+}
+
+// --------------------------------------------
 //   GMAIL SMTP
 // --------------------------------------------
 const mailer = nodemailer.createTransport({
@@ -223,7 +240,6 @@ app.post("/finalize", async (req, res) => {
     return res.status(500).json({ error: "finalize_failed" });
   }
 });
-
 
 // --------------------------------------------
 //  SERVICE REQUEST (OTHER SERVICES)
@@ -411,32 +427,31 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
 
     const screenshotBuffer = req.file.buffer;
     const screenshotBase64 = screenshotBuffer.toString("base64");
-
-    await sendWebhook(process.env.WEBHOOK_SCREENSHOT, {
-      username: "Finest Payment System",
-      avatar_url: LOGO_URL,
-      embeds: [
-        {
-          title: "🧾 Payment Screenshot Submitted",
-          description: `👤 **Customer:** ${customerName}`,
-          color: 0x2B2D31,
-          image: {
-            url: "attachment://screenshot.png"
-          },
-          footer: {
-            text: "Finest Store • Payment Verification",
-            icon_url: LOGO_URL
-          },
-          timestamp: new Date().toISOString()
-        }
-      ],
-      files: [
-        {
-          name: "screenshot.png",
-          data: screenshotBase64
-        }
-      ]
-    });
+    
+    await sendWebhookWithFile(
+      process.env.WEBHOOK_SCREENSHOT,
+      {
+        username: "Finest Payment System",
+        avatar_url: LOGO_URL,
+        embeds: [
+          {
+            title: "🧾 Payment Screenshot Submitted",
+            description: `👤 **Customer:** ${customerName}`,
+            color: 0x2B2D31,
+            image: {
+              url: "attachment://screenshot.png"
+            },
+            footer: {
+              text: "Finest Store • Payment Verification",
+              icon_url: LOGO_URL
+            },
+            timestamp: new Date().toISOString()
+          }
+        ]
+      },
+      req.file.buffer,
+      "screenshot.png"
+    );
 
     console.log("📸 Screenshot sent to premium channel");
 
@@ -447,5 +462,6 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
     return res.status(500).json({ error: "screenshot_failed" });
   }
 });
+
 
 
