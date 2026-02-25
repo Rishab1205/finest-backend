@@ -192,7 +192,7 @@ app.post("/finalize", async (req, res) => {
     // --------------------------
     await sendWebhook(process.env.WEBHOOK_PAID, {
       username: "Finest Store • Orders",
-      avatar_url: "https://yourdomain.com/logo.png", // 🔥 replace with hosted logo URL
+      avatar_url: "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&", // 🔥 replace with hosted logo URL
 
       content: `<@&${STAFF_ROLE_ID}>`, // staff ping
 
@@ -411,6 +411,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
