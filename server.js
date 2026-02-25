@@ -409,10 +409,6 @@ app.post("/freepack", async (req, res) => {
 //  Add-only. Keeps old logic.
 // =============================
 
-function generateOrderId(prefix = "FS") {
-  return `${prefix}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
-}
-
 // ✅ NEW: Register FreePack to Supabase + Premium webhook
 app.post("/free-register-v2", async (req, res) => {
   try {
@@ -427,7 +423,7 @@ app.post("/free-register-v2", async (req, res) => {
       return res.status(400).json({ success: false, error: "invalid_discord_id" });
     }
 
-    const orderId = generateOrderId("FREE");
+    const orderId = `FREE-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Insert into Supabase (permanent)
     const { error } = await supabase
@@ -602,7 +598,4 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
     return res.status(500).json({ error: "screenshot_failed" });
   }
 });
-
-
-
 
