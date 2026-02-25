@@ -12,6 +12,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const PACK_SERVICES_WEBHOOK = process.env.WEBHOOK_PACK;
+const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER;
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -96,6 +99,32 @@ app.post("/finalize", async (req, res) => {
         }
     ]);
 
+    // 🔥 Decide which webhook
+    let webhookURL;
+
+    if (product === "Other Services") {
+      webhookURL = OTHER_SERVICES_WEBHOOK;
+    } else {
+      webhookURL = PACK_SERVICES_WEBHOOK;
+    }
+
+    // 🔥 Send webhook
+    await sendWebhook(webhookURL, {
+      embeds: [{
+        title: "🧾 New Paid Order",
+        color: 0xffc107,
+        fields: [
+          { name: "Name", value: name, inline: true },
+          { name: "Email", value: email, inline: true },
+          { name: "Discord", value: discord_name, inline: true },
+          { name: "Discord ID", value: discord_id },
+          { name: "Product", value: product, inline: true },
+          { name: "Amount", value: "₹" + amount, inline: true },
+          { name: "Payment ID", value: payment_id }
+        ],
+        timestamp: new Date().toISOString()
+      }]
+    });
     
     // --------------------------
     // DISCORD WEBHOOK (UNCHANGED)
@@ -250,6 +279,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
