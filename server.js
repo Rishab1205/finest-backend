@@ -188,36 +188,51 @@ app.post("/finalize", async (req, res) => {
     });
 
     // --------------------------
-    // 🔔 SECOND WEBHOOK (UNCHANGED)
+    // 🔔 SECOND WEBHOOK (PREMIUM VERSION)
     // --------------------------
     await sendWebhook(process.env.WEBHOOK_PAID, {
+      username: "Finest Store • Orders",
+      avatar_url: "https://yourdomain.com/logo.png", // 🔥 replace with hosted logo URL
+
+      content: `<@&${STAFF_ROLE_ID}>`, // staff ping
+
       embeds: [{
-        title: "🧾 New Manual Payment Submitted",
-        color: 0xffc107,
+        title: "💳 New Premium Order Received",
+        description: `A new verified payment has been submitted.\n\n🆔 **Order ID:** \`${orderId}\``,
+        color: 0x2B2D31, // ✨ Premium Gold
+
+        thumbnail: {
+          url: "https://yourdomain.com/logo.png" // same logo
+        },
+
         fields: [
-          { name: "Name", value: name, inline: true },
-          { name: "Email", value: email, inline: true },
-          { name: "Discord", value: discord_name, inline: true },
-          { name: "Discord ID", value: discord_id },
-          { name: "Product", value: product, inline: true },
-          { name: "Amount", value: "₹" + amount, inline: true },
-          { name: "Transaction ID", value: payment_id },
-          { name: "Order ID", value: orderId }
+          {
+            name: "👤 Customer Info",
+            value:
+              `**Name:** ${name}\n` +
+              `**Email:** ${email}\n` +
+              `**Discord:** ${discord_name}\n` +
+              `**Discord ID:** ${discord_id}`
+          },
+          {
+            name: "📦 Order Details",
+            value:
+              `**Product:** ${product}\n` +
+              `**Amount:** ₹${amount}\n` +
+              `**Payment ID:** ${payment_id}`
+          }
         ],
+
+        footer: {
+          text: "Finest Store • Secure Payment System",
+          icon_url: "https://yourdomain.com/logo.png"
+        },
+
         timestamp: new Date().toISOString()
       }]
     });
 
-    return res.json({ success: true });
-
-  } catch (err) {
-    console.log("Finalize Error:", err);
-    return res.status(500).json({ error: "finalize_failed" });
-  }
-});
-
 const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;
-const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER_SERVICES;
 
 // helper: safe mention
 function staffPing() {
@@ -396,6 +411,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
