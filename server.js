@@ -21,9 +21,6 @@ function generateOrderId() {
 const LOGO_URL =
   "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&";
 
-// Staff role ID (NOT name — ID)
-const STAFF_ROLE_ID = "1464249885669851360";
-
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -399,6 +396,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
