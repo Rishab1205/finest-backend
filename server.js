@@ -7,6 +7,33 @@ import { createClient } from "@supabase/supabase-js";   // ✅ THIS LINE IS REQU
 
 dotenv.config();
 
+// ================================
+// 🆔 ORDER ID GENERATOR
+// ================================
+
+function generateOrderId() {
+  const random = Math.floor(1000 + Math.random() * 9000);
+  const timestamp = Date.now().toString().slice(-5);
+  return `FS-${timestamp}-${random}`;
+}
+
+// ================================
+// 🔥 WEBHOOK CONFIG
+// ================================
+
+const PACK_SERVICES_WEBHOOK =
+  "https://discord.com/api/webhooks/1468258407890030778/kr2Q7yBlP_gOrQaG_vRIj44M7v3pWTC2BlSBGaREyQRiFAr3KVN5YTSeVAlx4Cx1YXtJ";
+
+const OTHER_SERVICES_WEBHOOK =
+  "https://discord.com/api/webhooks/1468219449017630844/kQoAnfCgIoKmSAkB7pBug4AmcVgy1mH6oYjIr9z5WLO_XXIF8UFZwwdGwviekGN6N8EL";
+
+// Your logo (host it somewhere public OR Discord CDN link)
+const LOGO_URL =
+  "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&";
+
+// Staff role ID (NOT name — ID)
+const STAFF_ROLE_ID = "1464249885669851360";
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -64,7 +91,7 @@ const mailer = nodemailer.createTransport({
 });
 
 // --------------------------------------------
-//  FINALIZE PAYMENT (SUPABASE PERMANENT)
+//  FINALIZE PAYMENT (FULL PRODUCTION VERSION)
 // --------------------------------------------
 app.post("/finalize", async (req, res) => {
   try {
@@ -82,7 +109,10 @@ app.post("/finalize", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // 🔥 INSERT INTO SUPABASE (PERMANENT STORAGE)
+    // 🆔 Generate Order ID
+    const orderId = `FS-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // 🔥 Save to Supabase
     const { error } = await supabase
       .from("payments")
       .insert([
@@ -95,39 +125,83 @@ app.post("/finalize", async (req, res) => {
           amount: Number(amount || 0),
           payment_id,
           status: "paid",
-          claimed: false
+          claimed: false,
+          order_id: orderId
         }
-    ]);
+      ]);
 
-    // 🔥 Decide which webhook
-    let webhookURL;
-
-    if (product === "Other Services") {
-      webhookURL = OTHER_SERVICES_WEBHOOK;
-    } else {
-      webhookURL = PACK_SERVICES_WEBHOOK;
+    if (error) {
+      console.error("Supabase Error:", error.message);
+      return res.status(500).json({ error: "database_error" });
     }
 
-    // 🔥 Send webhook
-    await sendWebhook(webhookURL, {
-      embeds: [{
-        title: "🧾 New Paid Order",
-        color: 0xffc107,
-        fields: [
-          { name: "Name", value: name, inline: true },
-          { name: "Email", value: email, inline: true },
-          { name: "Discord", value: discord_name, inline: true },
-          { name: "Discord ID", value: discord_id },
-          { name: "Product", value: product, inline: true },
-          { name: "Amount", value: "₹" + amount, inline: true },
-          { name: "Payment ID", value: payment_id }
-        ],
-        timestamp: new Date().toISOString()
-      }]
-    });
-    
+    // 🔥 Decide which main webhook to send
+    const webhookURL =
+      product === "Other Services"
+        ? OTHER_SERVICES_WEBHOOK
+        : PACK_SERVICES_WEBHOOK;
+
+    const embedColor =
+      product === "Other Services"
+        ? 0x2B2D31
+        : 0xD4AF37;
+
     // --------------------------
-    // DISCORD WEBHOOK (UNCHANGED)
+    // 🎨 PREMIUM ORDER WEBHOOK
+    // --------------------------
+    await sendWebhook(webhookURL, {
+      username: "Finest Order System",
+      avatar_url: "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&", // 🔥 replace with real logo link
+      content: "<1464249885669851360>", // 🔥 replace with real staff role ID
+      embeds: [
+        {
+          title: "✨ New Order Received",
+          color: embedColor,
+          thumbnail: {
+            url: "YOUR_PUBLIC_LOGO_URL_HERE"
+          },
+          fields: [
+            {
+              name: "🆔 Order ID",
+              value: `\`${orderId}\``,
+              inline: true
+            },
+            {
+              name: "👤 Customer",
+              value: `**${name}**`,
+              inline: true
+            },
+            {
+              name: "📦 Product",
+              value: `\`${product}\``,
+              inline: true
+            },
+            {
+              name: "💰 Amount",
+              value: `₹${amount}`,
+              inline: true
+            },
+            {
+              name: "🧾 Payment ID",
+              value: `\`${payment_id}\``,
+              inline: false
+            },
+            {
+              name: "🎮 Discord Info",
+              value: `${discord_name}\nID: \`${discord_id}\``,
+              inline: false
+            }
+          ],
+          footer: {
+            text: "Finest Store • Automated Order System"
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    });
+
+    // --------------------------
+    // 🔔 SECOND WEBHOOK (UNCHANGED)
     // --------------------------
     await sendWebhook(process.env.WEBHOOK_PAID, {
       embeds: [{
@@ -140,7 +214,8 @@ app.post("/finalize", async (req, res) => {
           { name: "Discord ID", value: discord_id },
           { name: "Product", value: product, inline: true },
           { name: "Amount", value: "₹" + amount, inline: true },
-          { name: "Transaction ID", value: payment_id }
+          { name: "Transaction ID", value: payment_id },
+          { name: "Order ID", value: orderId }
         ],
         timestamp: new Date().toISOString()
       }]
@@ -153,7 +228,6 @@ app.post("/finalize", async (req, res) => {
     return res.status(500).json({ error: "finalize_failed" });
   }
 });
-
 // --------------------------------------------
 //  BOT PAYMENT CHECK (SUPABASE VERSION)
 // --------------------------------------------
@@ -279,6 +353,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
