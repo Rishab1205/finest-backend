@@ -17,16 +17,6 @@ function generateOrderId() {
   return `FS-${timestamp}-${random}`;
 }
 
-// ================================
-// 🔥 WEBHOOK CONFIG
-// ================================
-
-const PACK_SERVICES_WEBHOOK =
-  "https://discord.com/api/webhooks/1468258407890030778/kr2Q7yBlP_gOrQaG_vRIj44M7v3pWTC2BlSBGaREyQRiFAr3KVN5YTSeVAlx4Cx1YXtJ";
-
-const OTHER_SERVICES_WEBHOOK =
-  "https://discord.com/api/webhooks/1468219449017630844/kQoAnfCgIoKmSAkB7pBug4AmcVgy1mH6oYjIr9z5WLO_XXIF8UFZwwdGwviekGN6N8EL";
-
 // Your logo (host it somewhere public OR Discord CDN link)
 const LOGO_URL =
   "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&";
@@ -152,13 +142,13 @@ app.post("/finalize", async (req, res) => {
     await sendWebhook(webhookURL, {
       username: "Finest Order System",
       avatar_url: "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&", // 🔥 replace with real logo link
-      content: "<1464249885669851360>", // 🔥 replace with real staff role ID
+      content: `<@&${STAFF_ROLE_ID}>`, // 🔥 replace with real staff role ID
       embeds: [
         {
           title: "✨ New Order Received",
           color: embedColor,
           thumbnail: {
-            url: "YOUR_PUBLIC_LOGO_URL_HERE"
+            url: LOGO_URL
           },
           fields: [
             {
@@ -353,6 +343,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
