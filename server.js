@@ -4,8 +4,16 @@ import nodemailer from "nodemailer";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";   // ✅ THIS LINE IS REQUIRED
+import fetch from "node-fetch";
+import FormData from "form-data";
 
 dotenv.config();
+
+import multer from "multer";
+
+const upload = multer({
+  storage: multer.memoryStorage()
+});
 
 // ================================
 // 🆔 ORDER ID GENERATOR
@@ -380,6 +388,57 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
+// --------------------------------------------
+//  SCREENSHOT UPLOAD (SEPARATE PREMIUM WEBHOOK)
+// --------------------------------------------
+app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false });
+    }
+
+    const screenshotFile = req.file;
+
+    const orderId = `SS-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const formData = new FormData();
+
+    const payload = {
+      username: "Finest Payment System",
+      avatar_url: LOGO_URL,
+      embeds: [
+        {
+          title: "🧾 Payment Screenshot Received",
+          description: `🆔 Screenshot Ref: \`${orderId}\``,
+          color: 0xD4AF37,
+          footer: {
+            text: "Finest Store • Payment Verification Channel"
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    formData.append("payload_json", JSON.stringify(payload));
+
+    formData.append("file", screenshotFile.buffer, {
+      filename: screenshotFile.originalname
+    });
+
+    await fetch(process.env.WEBHOOK_PAID, {
+      method: "POST",
+      body: formData
+    });
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error("Screenshot upload error:", err);
+    return res.status(500).json({ success: false });
+  }
+});
+
 
 
 
