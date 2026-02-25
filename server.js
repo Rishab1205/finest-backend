@@ -404,51 +404,48 @@ app.listen(PORT, "0.0.0.0", () => {
 app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     const customerName = req.body.customer_name || "Unknown Customer";
-    const screenshotFile = req.file;
 
-    const orderId = `SS-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const screenshotBuffer = req.file.buffer;
+    const screenshotBase64 = screenshotBuffer.toString("base64");
 
-    const formData = new FormData();
-
-    const payload = {
+    await sendWebhook(process.env.WEBHOOK_SCREENSHOT, {
       username: "Finest Payment System",
       avatar_url: LOGO_URL,
       embeds: [
         {
-          title: "🧾 Payment Screenshot Received",
-          description:
-            `👤 **Customer:** ${customerName}\n\n` +
-            `🆔 Screenshot Ref: \`${orderId}\``,
-          color: 0xD4AF37,
+          title: "🧾 Payment Screenshot Submitted",
+          description: `👤 **Customer:** ${customerName}`,
+          color: 0x2B2D31,
+          image: {
+            url: "attachment://screenshot.png"
+          },
           footer: {
-            text: "Finest Store • Payment Verification Channel",
+            text: "Finest Store • Payment Verification",
             icon_url: LOGO_URL
           },
           timestamp: new Date().toISOString()
         }
+      ],
+      files: [
+        {
+          name: "screenshot.png",
+          data: screenshotBase64
+        }
       ]
-    };
-
-    formData.append("payload_json", JSON.stringify(payload));
-
-    formData.append("file", screenshotFile.buffer, {
-      filename: screenshotFile.originalname
     });
 
-    await fetch(process.env.WEBHOOK_PAID, {
-      method: "POST",
-      body: formData
-    });
+    console.log("📸 Screenshot sent to premium channel");
 
     return res.json({ success: true });
 
   } catch (err) {
     console.error("Screenshot upload error:", err);
-    return res.status(500).json({ success: false });
+    return res.status(500).json({ error: "screenshot_failed" });
   }
 });
+
 
