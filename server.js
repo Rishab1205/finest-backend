@@ -146,7 +146,7 @@ app.post("/finalize", async (req, res) => {
       embeds: [
         {
           title: "✨ New Order Received",
-          color: embedColor,
+          color: 0x2B2D31,
           thumbnail: {
             url: LOGO_URL
           },
@@ -343,6 +343,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
