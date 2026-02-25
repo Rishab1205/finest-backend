@@ -398,6 +398,7 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
       return res.status(400).json({ success: false });
     }
 
+    const customerName = req.body.customer_name || "Unknown Customer";
     const screenshotFile = req.file;
 
     const orderId = `SS-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
@@ -410,10 +411,13 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
       embeds: [
         {
           title: "🧾 Payment Screenshot Received",
-          description: `🆔 Screenshot Ref: \`${orderId}\``,
+          description:
+            `👤 **Customer:** ${customerName}\n\n` +
+            `🆔 Screenshot Ref: \`${orderId}\``,
           color: 0xD4AF37,
           footer: {
-            text: "Finest Store • Payment Verification Channel"
+            text: "Finest Store • Payment Verification Channel",
+            icon_url: LOGO_URL
           },
           timestamp: new Date().toISOString()
         }
@@ -438,29 +442,3 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
     return res.status(500).json({ success: false });
   }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
