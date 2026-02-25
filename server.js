@@ -404,6 +404,146 @@ app.post("/freepack", async (req, res) => {
   }
 });
 
+// =============================
+//  CLEAN FREEPACK SYSTEM (V2)
+//  Add-only. Keeps old logic.
+// =============================
+
+function generateOrderId(prefix = "FS") {
+  return `${prefix}-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+// ✅ NEW: Register FreePack to Supabase + Premium webhook
+app.post("/free-register-v2", async (req, res) => {
+  try {
+    const { name, email, discord_username, discord_id } = req.body;
+
+    if (!name || !email || !discord_id) {
+      return res.status(400).json({ success: false, error: "missing_fields" });
+    }
+
+    // Discord ID validation
+    if (!/^\d{17,19}$/.test(String(discord_id))) {
+      return res.status(400).json({ success: false, error: "invalid_discord_id" });
+    }
+
+    const orderId = generateOrderId("FREE");
+
+    // Insert into Supabase (permanent)
+    const { error } = await supabase
+      .from("user_access")
+      .insert([{
+        name,
+        email,
+        discord_username: discord_username || "",
+        discord_id: String(discord_id),
+        type: "FREE",
+        product: "FREE PACK",
+        claimed: false,
+        order_id: orderId
+      }]);
+
+    if (error) {
+      // If you added any unique constraint later, treat duplicates nicely
+      if (String(error.message || "").toLowerCase().includes("duplicate")) {
+        return res.json({ success: true, order_id: orderId, note: "already_registered" });
+      }
+      console.error("❌ Free-register-v2 Supabase error:", error.message);
+      return res.status(500).json({ success: false, error: "database_error" });
+    }
+
+    // Premium webhook log (free-log channel)
+    if (process.env.WEBHOOK_FREE_PREMIUM) {
+      await sendWebhook(process.env.WEBHOOK_FREE_PREMIUM, {
+        username: "Finest Store • FreePack",
+        avatar_url: process.env.LOGO_URL,
+        content: process.env.STAFF_ROLE_ID ? `<@&${process.env.STAFF_ROLE_ID}>` : undefined,
+        embeds: [{
+          title: "🎁 New FreePack Registration",
+          description: "A user registered for the FreePack.",
+          color: 0x5865F2,
+          thumbnail: { url: process.env.LOGO_URL },
+          fields: [
+            { name: "🆔 Order ID", value: `\`${orderId}\``, inline: true },
+            { name: "👤 Name", value: `**${name}**`, inline: true },
+            { name: "📧 Email", value: email, inline: false },
+            { name: "🎮 Discord", value: discord_username || "N/A", inline: true },
+            { name: "🔢 Discord ID", value: `\`${discord_id}\``, inline: true },
+            { name: "📦 Product", value: "`FREE PACK`", inline: true }
+          ],
+          footer: { text: "Finest Store • Free Access System" },
+          timestamp: new Date().toISOString()
+        }]
+      });
+    }
+
+    return res.json({ success: true, order_id: orderId });
+
+  } catch (err) {
+    console.error("❌ free-register-v2 error:", err);
+    return res.status(500).json({ success: false, error: "server_error" });
+  }
+});
+
+
+// ✅ NEW: Bot checks Supabase for FREE/PAID access
+app.get("/check-user-v2/:discordId", async (req, res) => {
+  try {
+    const id = String(req.params.discordId || "").trim();
+
+    if (!/^\d{17,19}$/.test(id)) {
+      return res.json({ exists: false });
+    }
+
+    const { data, error } = await supabase
+      .from("user_access")
+      .select("type, product, claimed, order_id")
+      .eq("discord_id", id)
+      .eq("claimed", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("❌ check-user-v2 Supabase error:", error.message);
+      return res.json({ exists: false });
+    }
+
+    if (!data || data.length === 0) return res.json({ exists: false });
+
+    const record = data[0];
+    return res.json({
+      exists: true,
+      type: record.type,           // "FREE" or "PAID"
+      product: record.product,
+      order_id: record.order_id
+    });
+
+  } catch (err) {
+    console.error("❌ check-user-v2 error:", err);
+    return res.json({ exists: false });
+  }
+});
+
+
+// ✅ OPTIONAL: mark FREE claim after role assigned (call from bot later if you want)
+app.post("/mark-claimed-v2", async (req, res) => {
+  try {
+    const { discord_id } = req.body;
+    if (!discord_id) return res.status(400).json({ success: false });
+
+    await supabase
+      .from("user_access")
+      .update({ claimed: true })
+      .eq("discord_id", String(discord_id))
+      .eq("claimed", false);
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("❌ mark-claimed-v2 error:", err);
+    return res.status(500).json({ success: false });
+  }
+});
+
 // --------------------------------------------
 //  START SERVER
 // --------------------------------------------
@@ -462,6 +602,7 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
     return res.status(500).json({ error: "screenshot_failed" });
   }
 });
+
 
 
 
