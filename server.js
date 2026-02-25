@@ -122,11 +122,20 @@ app.post("/finalize", async (req, res) => {
           order_id: orderId
         }
       ]);
-
+    
     if (error) {
       console.error("Supabase Error:", error.message);
+
+      if (error.message.includes("duplicate key")) {
+        return res.status(400).json({
+          error: "duplicate_payment",
+          message: "This payment ID has already been used."
+        });
+      }
+      
       return res.status(500).json({ error: "database_error" });
     }
+
 
     // 🔥 Decide which webhook
     const webhookURL =
@@ -442,3 +451,4 @@ app.post("/upload-screenshot", upload.single("screenshot"), async (req, res) => 
     return res.status(500).json({ success: false });
   }
 });
+
