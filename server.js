@@ -26,9 +26,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;  // ✅ only once (recommended)
-const PACK_SERVICES_WEBHOOK = process.env.WEBHOOK_PACK; // ✅ only once
-const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER; // ✅ only once
+const PACK_SERVICES_WEBHOOK = process.env.WEBHOOK_PACK;
+const OTHER_SERVICES_WEBHOOK = process.env.WEBHOOK_OTHER_SERVICES;
+const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;
+const LOGO_URL = process.env.LOGO_URL;
 
 const app = express();
 app.use(cors());
@@ -123,65 +124,38 @@ app.post("/finalize", async (req, res) => {
       return res.status(500).json({ error: "database_error" });
     }
 
-    // 🔥 Decide which main webhook to send
+    // 🔥 Decide which webhook
     const webhookURL =
       product === "Other Services"
         ? OTHER_SERVICES_WEBHOOK
         : PACK_SERVICES_WEBHOOK;
-
-    const embedColor =
-      product === "Other Services"
-        ? 0x2B2D31
-        : 0xD4AF37;
 
     // --------------------------
     // 🎨 PREMIUM ORDER WEBHOOK
     // --------------------------
     await sendWebhook(webhookURL, {
       username: "Finest Order System",
-      avatar_url: "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&", // 🔥 replace with real logo link
-      content: `<@&${STAFF_ROLE_ID}>`, // 🔥 replace with real staff role ID
+      avatar_url: LOGO_URL,
+      content: STAFF_ROLE_ID ? `<@&${STAFF_ROLE_ID}>` : null,
       embeds: [
         {
           title: "✨ New Order Received",
-          color: 0x2B2D31,
-          thumbnail: {
-            url: LOGO_URL
-          },
+          color: 0xD4AF37,
+          thumbnail: { url: LOGO_URL },
           fields: [
-            {
-              name: "🆔 Order ID",
-              value: `\`${orderId}\``,
-              inline: true
-            },
-            {
-              name: "👤 Customer",
-              value: `**${name}**`,
-              inline: true
-            },
-            {
-              name: "📦 Product",
-              value: `\`${product}\``,
-              inline: true
-            },
-            {
-              name: "💰 Amount",
-              value: `₹${amount}`,
-              inline: true
-            },
-            {
-              name: "🧾 Payment ID",
-              value: `\`${payment_id}\``,
-              inline: false
-            },
+            { name: "🆔 Order ID", value: `\`${orderId}\``, inline: true },
+            { name: "👤 Customer", value: `**${name}**`, inline: true },
+            { name: "📦 Product", value: `\`${product}\``, inline: true },
+            { name: "💰 Amount", value: `₹${amount}`, inline: true },
+            { name: "🧾 Payment ID", value: `\`${payment_id}\`` },
             {
               name: "🎮 Discord Info",
-              value: `${discord_name}\nID: \`${discord_id}\``,
-              inline: false
+              value: `${discord_name}\nID: \`${discord_id}\``
             }
           ],
           footer: {
-            text: "Finest Store • Automated Order System"
+            text: "Finest Store • Automated Order System",
+            icon_url: LOGO_URL
           },
           timestamp: new Date().toISOString()
         }
@@ -193,52 +167,54 @@ app.post("/finalize", async (req, res) => {
     // --------------------------
     await sendWebhook(process.env.WEBHOOK_PAID, {
       username: "Finest Store • Orders",
-      avatar_url: "https://cdn.discordapp.com/attachments/1138724463601537116/1476141309210267678/original-61ead0961d83ee5faab5cfc4ec87076c.png?ex=69a00b39&is=699eb9b9&hm=433f819aaf2c973e78e9fc90d6d8eaf0484a384acd4d88ec4b669f00bb2c1351&", // 🔥 replace with hosted logo URL
-
-      content: `<@&${STAFF_ROLE_ID}>`, // staff ping
-
-      embeds: [{
-        title: "💳 New Premium Order Received",
-        description: `A new verified payment has been submitted.\n\n🆔 **Order ID:** \`${orderId}\``,
-        color: 0x2B2D31, // ✨ Premium Gold
-
-        thumbnail: {
-          url: "https://yourdomain.com/logo.png" // same logo
-        },
-
-        fields: [
-          {
-            name: "👤 Customer Info",
-            value:
-              `**Name:** ${name}\n` +
-              `**Email:** ${email}\n` +
-              `**Discord:** ${discord_name}\n` +
-              `**Discord ID:** ${discord_id}`
+      avatar_url: LOGO_URL,
+      content: STAFF_ROLE_ID ? `<@&${STAFF_ROLE_ID}>` : null,
+      embeds: [
+        {
+          title: "💳 New Premium Order Received",
+          description:
+            `A verified payment has been submitted.\n\n` +
+            `🆔 **Order ID:** \`${orderId}\``,
+          color: 0x2B2D31,
+          thumbnail: { url: LOGO_URL },
+          fields: [
+            {
+              name: "👤 Customer Info",
+              value:
+                `**Name:** ${name}\n` +
+                `**Email:** ${email}\n` +
+                `**Discord:** ${discord_name}\n` +
+                `**Discord ID:** ${discord_id}`
+            },
+            {
+              name: "📦 Order Details",
+              value:
+                `**Product:** ${product}\n` +
+                `**Amount:** ₹${amount}\n` +
+                `**Payment ID:** ${payment_id}`
+            }
+          ],
+          footer: {
+            text: "Finest Store • Secure Payment System",
+            icon_url: LOGO_URL
           },
-          {
-            name: "📦 Order Details",
-            value:
-              `**Product:** ${product}\n` +
-              `**Amount:** ₹${amount}\n` +
-              `**Payment ID:** ${payment_id}`
-          }
-        ],
-
-        footer: {
-          text: "Finest Store • Secure Payment System",
-          icon_url: "https://yourdomain.com/logo.png"
-        },
-
-        timestamp: new Date().toISOString()
-      }]
+          timestamp: new Date().toISOString()
+        }
+      ]
     });
 
-// helper: safe mention
-function staffPing() {
-  if (!STAFF_ROLE_ID) return null;
-  return `<@&${STAFF_ROLE_ID}>`;
-}
+    return res.json({ success: true });
 
+  } catch (err) {
+    console.error("Finalize Error:", err);
+    return res.status(500).json({ error: "finalize_failed" });
+  }
+});
+
+
+// --------------------------------------------
+//  SERVICE REQUEST (OTHER SERVICES)
+// --------------------------------------------
 app.post("/service-request", async (req, res) => {
   try {
     const { username, service_type, plan, requirements } = req.body;
@@ -247,31 +223,30 @@ app.post("/service-request", async (req, res) => {
       return res.status(400).json({ success: false, error: "missing_fields" });
     }
 
-    // simple order id
     const orderId = `FS-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`;
 
-    const content = staffPing() ? `${staffPing()}  🛠️ New request received` : "🛠️ New request received";
-
     await sendWebhook(OTHER_SERVICES_WEBHOOK, {
-      content,
+      username: "Finest Store • Service Desk",
+      avatar_url: LOGO_URL,
+      content: STAFF_ROLE_ID ? `<@&${STAFF_ROLE_ID}>` : null,
       embeds: [
         {
-          author: {
-            name: "Finest Store • Service Desk",
-            icon_url: "https://i.imgur.com/0rGQq8C.png" // optional, you can change
-          },
           title: "📩 New Service Request",
           description:
-            "A new **Other Services** request has been submitted.\n\n" +
-            `**Order ID:** \`${orderId}\``,
+            `A new **Other Services** request has been submitted.\n\n` +
+            `🆔 **Order ID:** \`${orderId}\``,
           color: 0x5865F2,
+          thumbnail: { url: LOGO_URL },
           fields: [
             { name: "User", value: `\`${username}\``, inline: true },
             { name: "Service", value: `\`${service_type}\``, inline: true },
-            { name: "Package / Price", value: `\`${plan}\``, inline: false },
-            { name: "Requirements", value: requirements.slice(0, 1000), inline: false }
+            { name: "Package / Price", value: `\`${plan}\`` },
+            { name: "Requirements", value: requirements.slice(0, 1000) }
           ],
-          footer: { text: "Finest Store • Staff will contact on Discord" },
+          footer: {
+            text: "Finest Store • Staff will contact on Discord",
+            icon_url: LOGO_URL
+          },
           timestamp: new Date().toISOString()
         }
       ]
@@ -409,6 +384,7 @@ const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
+
 
 
 
